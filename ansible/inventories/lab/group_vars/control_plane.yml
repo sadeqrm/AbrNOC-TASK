@@ -1,0 +1,7 @@
+---
+control_plane: true
+
+etcd_member: true
+
+kubernetes_control_plane_endpoint: >-
+  {{ kubernetes_api_domain }}:{{ kubernetes_api_port }}

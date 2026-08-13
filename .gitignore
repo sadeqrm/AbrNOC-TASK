@@ -1,0 +1,45 @@
+# Ansible
+*.retry
+
+# SSH Keys
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Secrets
+*.secret
+*.vault
+.env
+.env.*
+
+# Ansible Vault temporary files
+.vault_pass
+vault-password*
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+admin.conf
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
