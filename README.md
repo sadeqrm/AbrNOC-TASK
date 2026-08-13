@@ -1,7 +1,20 @@
 # AbrNOC-TASK
-Phase 0 :
-Basic Architecture :
-(3 Control-plane + 2 Worker-node)
+
+Senior DevOps Engineer Technical Task — **Phase 0: Architecture Design**
+
+---
+
+## Phase 0 — Basic Architecture
+
+The initial Kubernetes architecture consists of:
+
+* **3 Control Plane nodes**
+* **2 Worker nodes**
+* **1 Highly Available Kubernetes API VIP**
+* **3-member stacked etcd cluster**
+* HA API access using **Pacemaker, Corosync, Keepalived, and HAProxy**
+
+```text
                          ┌─────────────────────────┐
                          │      Admin / Laptop     │
                          │ kubectl / ansible / git │
@@ -18,14 +31,14 @@ Basic Architecture :
                                       │
                  ┌────────────────────┼────────────────────┐
                  │                    │                    │
-        ┌────────▼───────┐   ┌────────▼───────┐   ┌──────▼─────────┐
-        │ k8s-cp-01      │   │ k8s-cp-02      │   │ k8s-cp-03     │
-        │ 10.10.10.11    │   │ 10.10.10.12    │   │ 10.10.10.13   │
-        │ kube-apiserver │   │ kube-apiserver │   │ kube-apiserver│
-        │ scheduler      │   │ scheduler      │   │ scheduler     │
-        │ controller     │   │ controller     │   │ controller    │
-        │ etcd-1         │   │ etcd-2         │   │ etcd-3        │
-        └────────┬───────┘   └────────┬───────┘   └──────┬─────────┘
+        ┌────────▼───────┐   ┌────────▼───────┐   ┌────────▼───────┐
+        │ k8s-cp-01      │   │ k8s-cp-02      │   │ k8s-cp-03      │
+        │ 10.10.10.11    │   │ 10.10.10.12    │   │ 10.10.10.13    │
+        │ kube-apiserver │   │ kube-apiserver │   │ kube-apiserver │
+        │ scheduler      │   │ scheduler      │   │ scheduler      │
+        │ controller     │   │ controller     │   │ controller     │
+        │ etcd-1         │   │ etcd-2         │   │ etcd-3         │
+        └────────┬───────┘   └────────┬───────┘   └────────┬───────┘
                  │                    │                    │
                  └────────────────────┼────────────────────┘
                                       │
@@ -37,250 +50,504 @@ Basic Architecture :
                 │ k8s-worker-01   │       │ k8s-worker-02   │
                 │ 10.10.10.21     │       │ 10.10.10.22     │
                 │ Kafka           │       │ Kafka           │
-                │ Apps            │       │ Apps            │
+                │ Applications    │       │ Applications    │
                 │ Istio           │       │ Istio           │
                 │ Monitoring      │       │ Monitoring      │
                 └─────────────────┘       └─────────────────┘
+```
 
-This topology is covering STACKED_ETCD which means each control-plane consist of an ETCD member.
-Acceptable for HA which is supported by kubeadm with 3 contol-plane QUORUM.
-
-| Hostname        |    IP پیشنهادی | Role                 |    CPU |   RAM |   Disk |
-| --------------- | -------------: | -------------------- | -----: | ----: | -----: |
-| `k8s-cp-01`     |  `10.10.10.11` | Control Plane + etcd | 4 vCPU |  8 GB |  60 GB |
-| `k8s-cp-02`     |  `10.10.10.12` | Control Plane + etcd | 4 vCPU |  8 GB |  60 GB |
-| `k8s-cp-03`     |  `10.10.10.13` | Control Plane + etcd | 4 vCPU |  8 GB |  60 GB |
-| `k8s-worker-01` |  `10.10.10.21` | Worker               | 8 vCPU | 16 GB | 100 GB |
-| `k8s-worker-02` |  `10.10.10.22` | Worker               | 8 vCPU | 16 GB | 100 GB |
-| VIP             | `10.10.10.100` | Kubernetes API       |      — |     — |      — |
-
-We need these resources because of tools like : KAFKA+ISTIO+JAEGER+PROMETHEUS+VAULT on worker nodes which makes more PRESSURE on workers.
-Selected OS is : Ubuntu Server 24.04 LTS.
 ---
-All Nodes has bellow :
-    containerd
-    kubelet
-    kubeadm
-    kubectl   # In all CP nodes
 
-I select CONTAINERD as a runtime. K8s need a CRI for each node so I choose that.
+## Stacked etcd Topology
+
+This architecture uses a **stacked etcd topology**, meaning that every Kubernetes Control Plane node also hosts an etcd member.
+
+```text
+k8s-cp-01 → etcd-1
+k8s-cp-02 → etcd-2
+k8s-cp-03 → etcd-3
+```
+
+A three-member etcd cluster provides quorum and allows the cluster to tolerate the failure of one etcd member.
+
+This topology is suitable for the required highly available Kubernetes cluster and is supported by `kubeadm`.
+
 ---
-So important to INIT our cluster on VIP as an ENDPOINT > kubeadm init --apiserver-advertise-address=10.10.10.100
-api.k8s.lab
-       │
-       ▼
+
+## Server Layout
+
+| Hostname        |     IP Address | Role                    |    CPU |   RAM |   Disk |
+| --------------- | -------------: | ----------------------- | -----: | ----: | -----: |
+| `k8s-cp-01`     |  `10.10.10.11` | Control Plane + etcd    | 4 vCPU |  8 GB |  60 GB |
+| `k8s-cp-02`     |  `10.10.10.12` | Control Plane + etcd    | 4 vCPU |  8 GB |  60 GB |
+| `k8s-cp-03`     |  `10.10.10.13` | Control Plane + etcd    | 4 vCPU |  8 GB |  60 GB |
+| `k8s-worker-01` |  `10.10.10.21` | Worker                  | 8 vCPU | 16 GB | 100 GB |
+| `k8s-worker-02` |  `10.10.10.22` | Worker                  | 8 vCPU | 16 GB | 100 GB |
+| `VIP`           | `10.10.10.100` | Kubernetes API Endpoint |      — |     — |      — |
+
+---
+
+## Base Components
+
+All Kubernetes nodes will have the following components installed:
+
+```text
+containerd
+kubelet
+kubeadm
+```
+
+The Control Plane nodes will also have:
+
+```text
+kubectl
+```
+
+---
+
+## Container Runtime
+
+I selected **containerd** as the Kubernetes container runtime.
+
+Kubernetes requires a CRI-compatible container runtime on every node, and containerd will be used for this environment.
+
+```text
+Runtime: containerd
+```
+
+---
+
+## Kubernetes API Endpoint
+
+One of the most important architecture decisions is to use a **shared HA endpoint** for the Kubernetes API instead of exposing a specific Control Plane node directly.
+
+The endpoint will be:
+
+```text
+api.k8s.lab:6443
+        │
+        ▼
 10.10.10.100
+```
 
-So KUBEADM will recieve this : controlPlaneEndpoint: "api.k8s.lab:6443"
-This is a SHARED endpoint (LOAD-BALANCER)  for all CP nodes
+The kubeadm configuration will therefore use:
 
-For all HOSTS we need bellow :
-nano /etc/hosts:
-    10.10.10.100 api.k8s.lab
-    10.10.10.11  k8s-cp-01
-    10.10.10.12  k8s-cp-02
-    10.10.10.13  k8s-cp-03
-    10.10.10.21  k8s-worker-01
-    10.10.10.22  k8s-worker-02
-After we set-up a DNS server, All will happen through out of that(DNS sever Resolver).
+```yaml
+controlPlaneEndpoint: "api.k8s.lab:6443"
+```
+
+This endpoint will remain stable regardless of which Control Plane node is currently available.
+
+> The `controlPlaneEndpoint` represents the shared Kubernetes API endpoint. Individual Control Plane nodes will still use their own node addresses internally when kubeadm initializes and joins them.
+
 ---
-TASK1 : 
-Pacemaker+Keepalived
-KEEPALIVED will support both VIP failover and LOADBALNCING mechanism but for task I asked for BOTH implementation.
-So I suggest bellow architecture:
+
+# Task 1 — Kubernetes Control Plane HA
+
+The required HA stack contains:
+
+```text
+Pacemaker
+Corosync
+Keepalived
+HAProxy
+```
+
+The proposed architecture is:
+
+```text
 Pacemaker / Corosync
         │
-        │ supervises HA resource state
+        │ manages HA resource state
         ▼
-   Keepalived
+    Keepalived
         │
-        │ VRRP
+        │ VRRP / VIP ownership
         ▼
-10.10.10.100 VIP
-
-It means KEEPALIVED responsible for :
-    * VIP ownership
-    * VRRP election
-    * health checking
-and PACEMAKER/COROSYNC responsible for :
-    * cluster membership
-    * resource state
-    * failure handling
-
-VIP is not just and IP ! Its responsible for sending request to 3 KUBE-APISERVER in correct manner. Logical view is :
-                     10.10.10.100:6443
-                            │
-                         VIP/LB
-                  ┌─────────┼─────────┐
-                  ▼         ▼         ▼
-              cp01:6443 cp02:6443 cp03:6443
-In HA_KUBEADM documents you see the needs of LOAD_BALANCING_ENDPOINT in front of all API's with HEALTCH_CHECK on 6443 port.
-For this purpose we need a REVERSE PROXY such as HA_PROXY too.(software TCP loadbalancer)
-Keepalived + HAProxy + Pacemaker
-
-Final Technical View will be :
-Pacemaker/Corosync
+  10.10.10.100
         │
-   manages HA services
+        ▼
+      HAProxy
         │
-        ├── Keepalived → VIP
+        │ TCP :6443
+        ▼
+┌──────────────┬──────────────┬──────────────┐
+│              │              │              │
+▼              ▼              ▼
+CP1            CP2            CP3
+:6443          :6443          :6443
+```
+
+---
+
+## Component Responsibilities
+
+### Keepalived
+
+Keepalived is responsible for:
+
+* VIP ownership
+* VRRP election
+* VIP failover
+* Node/service health checks used for VIP decisions
+
+### Pacemaker / Corosync
+
+Pacemaker and Corosync are responsible for:
+
+* Cluster membership
+* Resource state management
+* Failure detection
+* HA resource orchestration
+
+### HAProxy
+
+HAProxy acts as the TCP load balancer for the Kubernetes API servers.
+
+```text
+10.10.10.100:6443
         │
-        └── HAProxy → TCP :6443
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-             CP1        CP2        CP3
+        ▼
+     HAProxy
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+ CP1   CP2   CP3
+ 6443  6443  6443
+```
+
+The VIP itself only provides a stable entry point. HAProxy is responsible for forwarding traffic to healthy `kube-apiserver` instances.
 
 ---
-K8s Networking:
-CIDRS will be fixed in bellow :
-    Node Network:
-    10.10.10.0/24
 
-    Kubernetes API VIP:
-    10.10.10.100
+## Final HA Architecture
 
-    Pod CIDR:
-    10.244.0.0/16
-
-    Service CIDR:
-    10.96.0.0/12
-
-- Important tip : No overlap between network ranges.
-
-CNI:
-For task I prefer CALICO. 
-For complex purpose we use CILIUM(for better SECURITY and OBSERVABILITY).
-
-Because of BOOTSTRAP_CLUSTER process which should be done before ANSIBLE, we need to select CNI because after INIT by CP, a network plugin shoud be selected and install for cluster to be UP healthy.
+```text
+Pacemaker / Corosync
+        │
+        │ manages HA resources
+        │
+        ├── Keepalived → VIP ownership / failover
+        │
+        └── HAProxy → Kubernetes API TCP load balancing
+                           │
+                   ┌───────┼───────┐
+                   ▼       ▼       ▼
+                  CP1     CP2     CP3
+                 :6443   :6443   :6443
+```
 
 ---
-Architecure Points : 
-No APP_WORKLOADS on CP nodes ! We do like bellow :
-    cp01 ─┐
-    cp02 ─┼─ Kubernetes control plane
-    cp03 ─┘
 
-    worker01 ─┐
-            ├─ Application workloads
-    worker02 ─┘
+# Kubernetes Networking
 
-APP_WORKLOADS on WR nodes will be :
-    ArgoCD
+The network ranges are defined as follows.
 
-    Kafka Broker 1
-    Kafka Broker 2
-    Kafka Broker 3
+## Node Network
 
-    Producer
-    Consumer
+```text
+10.10.10.0/24
+```
 
-    Istio
+## Kubernetes API VIP
 
-    Vault
+```text
+10.10.10.100
+```
 
-    Prometheus
-    Alertmanager
+## Pod CIDR
 
-    Jaeger
+```text
+10.244.0.0/16
+```
 
-* There an issue beyond the task for KAFKA clustering, which we need 3 HOST for clustering in HOST_LEVEL FAULT DOMAIN. But one HOST will be hosting two
-Of KAFKA brokers. With podAntiAffinity we tell scheduler to handle it.
+## Service CIDR
 
-3 Kafka Pods <-> 3 independent failure domains
+```text
+10.96.0.0/12
+```
+
+> **Important:** The Node, Pod, and Service networks must not overlap.
 
 ---
-NAMESPACES design :
-    argocd
-    istio-system
-    vault
-    kafka
-    apps
-    monitoring
-    tracing
-Which will be like that :
-    kafka/
-    kafka-0
-    kafka-1
-    kafka-2
 
-    apps/
-    producer
-    consumer
+# CNI
 
-    monitoring/
-    prometheus
-    alertmanager
+For this task, I selected:
 
-    tracing/
-    jaeger
+```text
+Calico
+```
+
+Calico keeps the initial Kubernetes networking architecture straightforward while still providing the networking capabilities required by the cluster.
+
+For more advanced networking, security, and observability requirements, **Cilium** could also be considered.
+
+The CNI must be selected before completing the Kubernetes bootstrap process because after the Control Plane is initialized, a network plugin must be installed before the cluster becomes fully operational.
 
 ---
-Project WORKFLOW :
+
+# Workload Placement
+
+Application workloads will **not** run on the Kubernetes Control Plane nodes.
+
+```text
+cp01 ─┐
+cp02 ─┼─ Kubernetes Control Plane
+cp03 ─┘
+```
+
+Application workloads will run on the Worker nodes:
+
+```text
+worker01 ─┐
+          ├─ Application Workloads
+worker02 ─┘
+```
+
+---
+
+## Planned Application Workloads
+
+The Worker nodes will eventually host:
+
+```text
+ArgoCD
+
+Kafka Broker 1
+Kafka Broker 2
+Kafka Broker 3
+
+Producer
+Consumer
+
+Istio
+
+Vault
+
+Prometheus
+Alertmanager
+
+Jaeger
+```
+
+---
+
+# Kafka Failure Domain Consideration
+
+There is an architectural limitation in the requested topology.
+
+The task requires:
+
+```text
+3 Kafka Brokers
+```
+
+However, the Kubernetes cluster contains only:
+
+```text
+2 Worker Nodes
+```
+
+Therefore, one Worker node will inevitably host more than one Kafka broker.
+
+This means that while we can run three Kafka broker Pods, we do not have three independent host-level failure domains.
+
+```text
+3 Kafka Pods != 3 Independent Host Failure Domains
+```
+
+Kubernetes scheduling rules such as:
+
+```text
+podAntiAffinity
+```
+
+will be used to distribute Kafka brokers across Worker nodes as much as possible.
+
+This limitation will also be documented and considered during the failure-testing phase.
+
+---
+
+# Namespace Design
+
+The planned Kubernetes namespaces are:
+
+```text
+argocd
+istio-system
+vault
+kafka
+apps
+monitoring
+tracing
+```
+
+The logical workload layout will look similar to:
+
+```text
+kafka/
+├── kafka-0
+├── kafka-1
+└── kafka-2
+
+apps/
+├── producer
+└── consumer
+
+monitoring/
+├── prometheus
+└── alertmanager
+
+tracing/
+└── jaeger
+```
+
+---
+
+# Project Workflow
+
+The implementation workflow will follow this sequence:
+
+```text
 GitHub Repository
-      │
-      ▼
-Ansible
-      │
-      ├── OS preparation
-      ├── containerd
-      ├── Kubernetes packages
-      ├── Pacemaker
-      ├── Corosync
-      ├── Keepalived
-      └── Kubernetes cluster bootstrap
-      │
-      ▼
+        │
+        ▼
+      Ansible
+        │
+        ├── OS preparation
+        ├── containerd
+        ├── Kubernetes packages
+        ├── Pacemaker
+        ├── Corosync
+        ├── Keepalived
+        ├── HAProxy
+        └── Kubernetes cluster bootstrap
+        │
+        ▼
 HA Kubernetes Cluster
+        │
+        ▼
+ArgoCD Bootstrap
+        │
+        ▼
+GitOps Repository
+        │
+        ├── Kafka
+        ├── Producer
+        ├── Consumer
+        ├── Istio
+        ├── Vault
+        ├── Prometheus
+        └── Jaeger
+```
+
+After deployment, failure tests will be performed:
+
+```text
+Failure Tests
+      │
+      ├── Kill Kafka broker leader
+      ├── Kill active Vault node
+      └── Kill active VIP holder
       │
       ▼
-ArgoCD bootstrap
+Metrics + Logs + Traces
       │
       ▼
-GitOps repository
-      │
-      ├── Kafka
-      ├── Producer
-      ├── Consumer
-      ├── Istio
-      ├── Vault
-      ├── Prometheus
-      └── Jaeger
-
-then :
-
-failure tests
-      │
-      ├── Kafka leader killed
-      ├── Vault active killed
-      └── VIP holder killed
+Recovery Time Measurements
       │
       ▼
-metrics + logs + traces + recovery times
-      │
-      ▼
-final report
+Final Reliability Report
+```
 
-So we locked in our PHASE 0 like that :
-    OS             Ubuntu Server 24.04 LTS
+---
 
-    Control Plane
-    cp01            10.10.10.11
-    cp02            10.10.10.12
-    cp03            10.10.10.13
+# Phase 0 — Final Architecture Decisions
 
-    Workers
-    worker01        10.10.10.21
-    worker02        10.10.10.22
+The following architecture decisions are now locked for Phase 0:
 
-    API VIP
-    api.k8s.lab     10.10.10.100:6443
+```text
+Operating System
+Ubuntu Server 24.04 LTS
 
-    etcd            stacked / 3 members
-    Runtime         containerd
-    Bootstrap       kubeadm
-    HA              Pacemaker + Corosync + Keepalived
-    API balancing   HAProxy
-    CNI             Calico
-    GitOps          ArgoCD
 
+Control Plane
+k8s-cp-01       10.10.10.11
+k8s-cp-02       10.10.10.12
+k8s-cp-03       10.10.10.13
+
+
+Workers
+k8s-worker-01   10.10.10.21
+k8s-worker-02   10.10.10.22
+
+
+Kubernetes API VIP
+api.k8s.lab     10.10.10.100:6443
+
+
+etcd
+3-member stacked etcd
+
+
+Container Runtime
+containerd
+
+
+Kubernetes Bootstrap
+kubeadm
+
+
+High Availability
+Pacemaker
+Corosync
+Keepalived
+
+
+API Load Balancing
+HAProxy
+
+
+CNI
+Calico
+
+
+GitOps
+ArgoCD
+```
+
+---
+
+## Phase 0 Status
+
+* [x] Kubernetes topology defined
+* [x] Control Plane nodes defined
+* [x] Worker nodes defined
+* [x] IP addressing defined
+* [x] Kubernetes API VIP defined
+* [x] etcd topology defined
+* [x] Container runtime selected
+* [x] Kubernetes bootstrap method selected
+* [x] Control Plane HA architecture defined
+* [x] API load balancing architecture defined
+* [x] Kubernetes network ranges defined
+* [x] CNI selected
+* [x] Workload placement strategy defined
+* [x] Namespace strategy defined
+* [x] Kafka failure-domain limitation identified
+
+---
+
+# Next Step
+
+The next phase will focus on:
+
+```text
+Phase 1
+Repository Design
++
+Ansible Foundation
+```
+
+This includes defining the repository structure, Ansible inventory, variables, roles, and the first infrastructure preparation playbooks.
