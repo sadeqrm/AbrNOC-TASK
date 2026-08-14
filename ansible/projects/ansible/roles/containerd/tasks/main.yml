@@ -1,0 +1,78 @@
+---
+# --------------------------------------------------
+# Install containerd
+# --------------------------------------------------
+
+- name: Install containerd
+  ansible.builtin.apt:
+    name: "{{ containerd_package_name }}"
+    state: present
+    update_cache: true
+
+
+# --------------------------------------------------
+# Configuration directory
+# --------------------------------------------------
+
+- name: Ensure containerd configuration directory exists
+  ansible.builtin.file:
+    path: "{{ containerd_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+
+# --------------------------------------------------
+# Generate default configuration
+# --------------------------------------------------
+
+- name: Check whether containerd configuration exists
+  ansible.builtin.stat:
+    path: "{{ containerd_config_file }}"
+  register: containerd_config
+
+
+- name: Generate default containerd configuration
+  ansible.builtin.shell:
+    cmd: containerd config default > {{ containerd_config_file }}
+  when: not containerd_config.stat.exists
+  notify:
+    - Restart containerd
+
+
+# --------------------------------------------------
+# Configure systemd cgroup
+# --------------------------------------------------
+
+- name: Enable SystemdCgroup for containerd
+  ansible.builtin.replace:
+    path: "{{ containerd_config_file }}"
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  notify:
+    - Restart containerd
+
+
+# --------------------------------------------------
+# Enable CRI
+# --------------------------------------------------
+
+- name: Ensure CRI plugin is not disabled
+  ansible.builtin.replace:
+    path: "{{ containerd_config_file }}"
+    regexp: 'disabled_plugins\s*=\s*\["cri"\]'
+    replace: 'disabled_plugins = []'
+  notify:
+    - Restart containerd
+
+
+# --------------------------------------------------
+# Service
+# --------------------------------------------------
+
+- name: Ensure containerd is enabled and running
+  ansible.builtin.service:
+    name: "{{ containerd_service_name }}"
+    enabled: true
+    state: started

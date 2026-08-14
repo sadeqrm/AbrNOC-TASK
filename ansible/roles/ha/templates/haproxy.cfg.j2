@@ -1,0 +1,33 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+
+    timeout connect 5s
+    timeout client  50s
+    timeout server  50s
+
+
+frontend kubernetes-api
+    bind *:{{ haproxy_frontend_port }}
+
+    mode tcp
+
+    default_backend kubernetes-api-backend
+
+
+backend kubernetes-api-backend
+    mode tcp
+
+    option tcp-check
+
+    balance roundrobin
+
+{% for host in groups['control_plane'] %}
+    server {{ host }} {{ hostvars[host]['ansible_host'] }}:{{ haproxy_backend_port }} check inter 2s fall 3 rise 2
+{% endfor %}

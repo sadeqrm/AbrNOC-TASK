@@ -1,0 +1,8 @@
+---
+- name: Configure Kubernetes HA API layer
+  hosts: control_plane
+
+  become: true
+
+  roles:
+    - ha

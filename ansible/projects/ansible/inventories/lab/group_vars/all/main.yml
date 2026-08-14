@@ -43,3 +43,6 @@ container_runtime: containerd
 # --------------------------------------------------
 
 kubernetes_cni: calico
+#hacluster
+hacluster_user: hacluster
+hacluster_password: "{{ vault_hacluster_password }}"

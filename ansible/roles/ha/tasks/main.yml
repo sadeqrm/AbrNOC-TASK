@@ -1,0 +1,19 @@
+---
+- name: Install HA packages
+  ansible.builtin.import_tasks:
+    file: packages.yml
+
+
+- name: Configure HAProxy
+  ansible.builtin.import_tasks:
+    file: haproxy.yml
+
+
+- name: Configure Keepalived
+  ansible.builtin.import_tasks:
+    file: keepalived.yml
+
+
+- name: Configure Pacemaker and Corosync
+  ansible.builtin.import_tasks:
+    file: pacemaker.yml

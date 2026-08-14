@@ -1,0 +1,15 @@
+---
+common_packages:
+  - curl
+  - wget
+  - vim
+  - git
+  - jq
+  - unzip
+  - tar
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - apt-transport-https
+  - software-properties-common
+  - chrony

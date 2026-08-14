@@ -1,0 +1,13 @@
+---
+- name: Install HA packages
+  ansible.builtin.apt:
+    name: "{{ ha_packages }}"
+    state: present
+    update_cache: true
+
+
+- name: Enable pcsd
+  ansible.builtin.service:
+    name: pcsd
+    state: started
+    enabled: true

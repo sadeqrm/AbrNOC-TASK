@@ -1,0 +1,17 @@
+---
+ha_packages:
+  - haproxy
+  - keepalived
+  - pacemaker
+  - corosync
+  - pcs
+  - resource-agents
+
+ha_cluster_name: abrnoc-ha
+
+haproxy_frontend_port: 8443
+haproxy_backend_port: 6443
+
+keepalived_virtual_router_id: 51
+
+keepalived_auth_pass: abrnocvip

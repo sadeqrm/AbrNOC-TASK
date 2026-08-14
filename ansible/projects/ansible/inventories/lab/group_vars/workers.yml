@@ -1,0 +1,4 @@
+---
+control_plane: false
+
+etcd_member: false

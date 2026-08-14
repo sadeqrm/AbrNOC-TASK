@@ -1,0 +1,13 @@
+---
+- name: Set hacluster password
+  ansible.builtin.user:
+    name: hacluster
+    password: "{{ hacluster_password | password_hash('sha512') }}"
+  no_log: true
+
+
+- name: Ensure pcsd is running
+  ansible.builtin.service:
+    name: pcsd
+    state: started
+    enabled: true
