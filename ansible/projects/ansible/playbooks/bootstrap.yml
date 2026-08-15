@@ -1,0 +1,8 @@
+---
+- name: Bootstrap Kubernetes cluster
+  hosts: control_plane:workers
+  become: true
+  gather_facts: true
+
+  roles:
+    - kubernetes_cluster

@@ -1,0 +1,17 @@
+---
+- name: Run Kubernetes preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+
+- name: Configure first control-plane node
+  ansible.builtin.import_tasks: init.yml
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: Join additional control-plane nodes
+  ansible.builtin.import_tasks: join_control_plane.yml
+  when:
+    - inventory_hostname in groups['control_plane']
+    - inventory_hostname != groups['control_plane'][0]
+
+- name: Join worker nodes
+  ansible.builtin.import_tasks: join_workers.yml
+  when: inventory_hostname in groups['workers']
