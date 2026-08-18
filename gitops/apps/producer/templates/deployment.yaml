@@ -11,7 +11,17 @@ spec:
     metadata:
       labels:
         app: producer
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "abrnoc-apps"
+        vault.hashicorp.com/agent-inject-secret-abrnoc.env: "abrnoc/data/apps"
+        vault.hashicorp.com/agent-inject-template-abrnoc.env: |
+          {{`{{- with secret "abrnoc/data/apps" -}}`}}
+          KAFKA_USERNAME={{`{{ .Data.data.kafka_username }}`}}
+          KAFKA_PASSWORD={{`{{ .Data.data.kafka_password }}`}}
+          {{`{{- end }}`}}
     spec:
+      serviceAccountName: producer-vault
       containers:
         - name: producer
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
