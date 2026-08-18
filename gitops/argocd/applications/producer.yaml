@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: producer
+  namespace: argocd
+spec:
+  project: abrnoc-platform
+  source:
+    repoURL: https://github.com/sadeqrm/AbrNOC-TASK.git
+    targetRevision: main
+    path: gitops/apps/producer
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

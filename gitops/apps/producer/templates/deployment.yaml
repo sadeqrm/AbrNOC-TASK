@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+    spec:
+      containers:
+        - name: producer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              i=0
+              while true; do
+                i=$((i+1))
+                EVENT="event-${i}-$(date +%s)"
+                echo "${EVENT}" | /opt/kafka/bin/kafka-console-producer.sh \
+                  --bootstrap-server "${KAFKA_BOOTSTRAP_SERVERS}" \
+                  --topic "${KAFKA_TOPIC}"
+                echo "produced: ${EVENT}"
+                sleep 5
+              done
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: KAFKA_TOPIC
+              value: {{ .Values.kafka.topic | quote }}
