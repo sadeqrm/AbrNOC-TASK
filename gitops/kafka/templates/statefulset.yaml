@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka-headless
+  replicas: {{ .Values.replicaCount }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: client
+              containerPort: 9092
+            - name: controller
+              containerPort: 9093
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              ORDINAL="${HOSTNAME##*-}"
+
+              export KAFKA_CFG_NODE_ID="${ORDINAL}"
+              export KAFKA_CFG_PROCESS_ROLES="broker,controller"
+
+              export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="0@kafka-0.kafka-headless:9093,1@kafka-1.kafka-headless:9093,2@kafka-2.kafka-headless:9093"
+
+              export KAFKA_CFG_LISTENERS="PLAINTEXT://:9092,CONTROLLER://:9093"
+              export KAFKA_CFG_ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}.kafka-headless:9092"
+
+              export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP="CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+              export KAFKA_CFG_CONTROLLER_LISTENER_NAMES="CONTROLLER"
+              export KAFKA_CFG_INTER_BROKER_LISTENER_NAME="PLAINTEXT"
+
+              export KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR="3"
+              export KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR="3"
+              export KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR="2"
+              export KAFKA_CFG_DEFAULT_REPLICATION_FACTOR="3"
+              export KAFKA_CFG_MIN_INSYNC_REPLICAS="2"
+
+              export KAFKA_CLUSTER_ID="AbrNOCKafkaCluster00001"
+
+              exec /opt/bitnami/scripts/kafka/run.sh
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

@@ -1,0 +1,19 @@
+replicaCount: 3
+
+image:
+  repository: bitnami/kafka
+  tag: 3.9.0
+
+service:
+  port: 9092
+
+persistence:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
