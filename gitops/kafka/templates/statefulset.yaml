@@ -22,7 +22,7 @@ spec:
             - /bin/bash
             - -ec
             - |
-              export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}.kafka-headless:9092"
+              export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}.kafka-headless.kafka.svc.cluster.local:9092"
               exec /etc/kafka/docker/run
           ports:
             - name: client
