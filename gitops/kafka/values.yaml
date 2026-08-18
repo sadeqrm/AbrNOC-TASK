@@ -1,7 +1,7 @@
 replicaCount: 3
 
 image:
-  repository: bitnami/kafka
+  repository: apache/kafka
   tag: 3.9.0
 
 service:
