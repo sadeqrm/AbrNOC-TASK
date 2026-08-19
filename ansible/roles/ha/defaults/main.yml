@@ -5,7 +5,7 @@ ha_packages:
   - pacemaker
   - corosync
   - pcs
-  - resource-agents
+  - resource-agents-base
 
 ha_cluster_name: abrnoc-ha
 

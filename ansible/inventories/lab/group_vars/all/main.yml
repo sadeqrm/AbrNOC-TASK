@@ -1,0 +1,48 @@
+---
+# --------------------------------------------------
+# General
+# --------------------------------------------------
+
+cluster_name: abrnoc-k8s
+
+timezone: Asia/Tehran
+
+ansible_user: ubuntu
+
+
+# --------------------------------------------------
+# Kubernetes API
+# --------------------------------------------------
+
+kubernetes_api_domain: api.k8s.lab
+kubernetes_api_vip: 10.10.10.100
+
+kubernetes_api_frontend_port: 8443
+kubernetes_api_backend_port: 6443
+
+# --------------------------------------------------
+# Kubernetes Networking
+# --------------------------------------------------
+
+node_network_cidr: 10.10.10.0/24
+
+pod_network_cidr: 10.244.0.0/16
+
+service_network_cidr: 10.96.0.0/12
+
+
+# --------------------------------------------------
+# Container Runtime
+# --------------------------------------------------
+
+container_runtime: containerd
+
+
+# --------------------------------------------------
+# CNI
+# --------------------------------------------------
+
+kubernetes_cni: calico
+#hacluster
+hacluster_user: hacluster
+hacluster_password: "{{ vault_hacluster_password }}"

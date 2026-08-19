@@ -1,0 +1,35 @@
+---
+- name: Check swap is disabled
+  ansible.builtin.command:
+    cmd: swapon --show
+  register: swap_status
+  changed_when: false
+  failed_when: swap_status.stdout != ""
+
+- name: Check containerd is active
+  ansible.builtin.command:
+    cmd: systemctl is-active containerd
+  register: containerd_status
+  changed_when: false
+  failed_when: containerd_status.stdout != "active"
+
+- name: Check kubelet is installed
+  ansible.builtin.command:
+    cmd: kubelet --version
+  changed_when: false
+
+- name: Check kubeadm is installed
+  ansible.builtin.command:
+    cmd: kubeadm version -o short
+  changed_when: false
+
+- name: Check API endpoint DNS resolution
+  ansible.builtin.command:
+    cmd: getent hosts {{ kubernetes_api_domain }}
+  changed_when: false
+
+- name: Check HAProxy endpoint is reachable
+  ansible.builtin.shell:
+    cmd: "timeout 3 bash -c '</dev/tcp/{{ kubernetes_api_vip }}/{{ kubernetes_api_port }}'"
+    executable: /bin/bash
+  changed_when: false

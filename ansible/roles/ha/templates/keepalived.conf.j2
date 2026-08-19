@@ -21,7 +21,7 @@ vrrp_instance VI_K8S {
 
     state BACKUP
 
-    interface {{ ansible_default_ipv4.interface }}
+    interface {{ ansible_facts['default_ipv4']['interface'] }}
 
     virtual_router_id {{ keepalived_virtual_router_id }}
 

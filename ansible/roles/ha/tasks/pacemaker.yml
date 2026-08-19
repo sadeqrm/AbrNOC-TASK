@@ -1,13 +1,37 @@
 ---
 - name: Set hacluster password
   ansible.builtin.user:
-    name: hacluster
-    password: "{{ hacluster_password | password_hash('sha512') }}"
+    name: "{{ hacluster_user }}"
+    password: "{{ hacluster_password | password_hash('sha512', 'abrnochacluster') }}"
+    update_password: always
   no_log: true
-
 
 - name: Ensure pcsd is running
   ansible.builtin.service:
     name: pcsd
     state: started
     enabled: true
+
+- name: Authenticate Pacemaker cluster nodes
+  ansible.builtin.command:
+    cmd: >
+      pcs host auth
+      k8s-cp-01
+      k8s-cp-02
+      k8s-cp-03
+      -u {{ hacluster_user }}
+      -p {{ hacluster_password }}
+  run_once: true
+  delegate_to: k8s-cp-01
+  no_log: true
+  changed_when: false
+
+- name: Check whether expected Corosync cluster is configured
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^\s*cluster_name:\s*{{ ha_cluster_name }}\s*$' /etc/corosync/corosync.conf
+  args:
+    executable: /bin/bash
+  register: corosync_cluster_check
+  changed_when: false
+  failed_when: false
