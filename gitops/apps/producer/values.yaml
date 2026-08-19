@@ -1,0 +1,9 @@
+replicaCount: 1
+
+image:
+  repository: apache/kafka
+  tag: "3.9.0"
+
+kafka:
+  bootstrapServers: kafka.kafka.svc.cluster.local:9092
+  topic: abrnoc-events
